@@ -102,8 +102,8 @@ static void MouseButtonCallback(GLFWwindow* window, int button, int action,
 // }
 
 // void DrawTriangle() {
-GLuint vao = -1;
-GLuint shader_program = -1;
+GLuint vao;
+GLuint shader_program;
 
 void InitShader() {
   // The source code of the shader programs are defined as
