@@ -1,23 +1,45 @@
-//
-// Michael Shafae
-// mshafae at fullerton.edu
-//
-// A really simple GLFW3 demo that renders an animated and
-// colored tetrahedron which the edges outlined in black.
-//
-
-#include <iostream>
 
 #include <GL/glew.h>
 
 #include <cassert>
 #include <cmath>
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <iostream>
 #define GLFW_INCLUDE_GLU
 #include <GLFW/glfw3.h>
 
-#define MSGLError() _msglError(stderr, __FILE__, __LINE__)
+typedef struct {
+  glm::vec3 coord;
+  glm::vec3 color;
+} vertex_t;
+
+const char* vertex_shader =
+    "#version 400\n"
+    "uniform mat4 model_view_matrix;"
+    "uniform mat4 projection_matrix;"
+    "in vec3 in_vertex;"
+    // "in vec3 in_color;"
+    // "out vec4 out_color;"
+    "void main() {"
+    "  gl_Position = projection_matrix * model_view_matrix * vec4(in_vertex, 1.0);"
+    // "  out_color = vec4(0.5, 0.0, 0.5, 1.0);"
+    "}";
+
+const char* fragment_shader =
+    "#version 400\n"
+    // "in vec4 in_color;"
+    "out vec4 frag_color;"
+    "void main() {"
+    "  frag_color = vec4(0.5, 0.0, 0.5, 1.0);"
+    "}";
+
+#define MSGLError() _MSGLError(stderr, __FILE__, __LINE__)
 
 bool _MSGLError(FILE* out, const char* filename, int line) {
   bool ret = false;
@@ -57,7 +79,8 @@ static void KeyCallback(GLFWwindow* window, int key, int scancode, int action,
   }
 }
 
-static void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+static void MouseButtonCallback(GLFWwindow* window, int button, int action,
+                                int mods) {
   if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
     fprintf(stderr, "Right mouse button pressed.\n");
   } else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
@@ -65,27 +88,107 @@ static void MouseButtonCallback(GLFWwindow* window, int button, int action, int 
   }
 }
 
-static void MouseCursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
-  fprintf(stderr, "Mouse at (%f, %f)\n", xpos, ypos);
+// static void MouseCursorPositionCallback(GLFWwindow* window, double xpos,
+// double ypos) {
+//   fprintf(stderr, "Mouse at (%f, %f)\n", xpos, ypos);
+// }
+//
+// static void CursorEnteredCallback(GLFWwindow* window, int entered){
+//   if (entered == GLFW_TRUE) {
+//     fprintf(stderr, "Cursor entered the window.\n");
+//   } else {
+//     fprintf(stderr, "Cursor exited the window.\n");
+//   }
+// }
+
+// void DrawTriangle() {
+GLuint vao = -1;
+GLuint shader_program = -1;
+
+void InitShader() {
+  // The source code of the shader programs are defined as
+  // const char* variables at the top of the file.
+
+  // Create a vertex shader
+  GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+  MSGLError();
+  glShaderSource(vs, 1, &vertex_shader, NULL);
+  glCompileShader(vs);
+  MSGLError();
+
+  // Create a fragment shader
+  GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+  MSGLError();
+  glShaderSource(fs, 1, &fragment_shader, NULL);
+  glCompileShader(fs);
+  MSGLError();
+
+  // Link it all together; shader_program is global
+  shader_program = glCreateProgram();
+  MSGLError();
+  glAttachShader(shader_program, fs);
+  glAttachShader(shader_program, vs);
+  glLinkProgram(shader_program);
+  MSGLError();
 }
 
-static void CursorEnteredCallback(GLFWwindow* window, int entered){
-  if (entered == GLFW_TRUE) {
-    fprintf(stderr, "Cursor entered the window.\n");
-  } else {
-    fprintf(stderr, "Cursor exited the window.\n");
-  }
+void InitTriangle() {
+  
+  // Just floats
+  // float points[] = {
+  //    0.0f,  0.5f,  0.0f,
+  //    0.5f, -0.5f,  0.0f,
+  //   -0.5f, -0.5f,  0.0f
+  // };
+
+  // Using a struct to interleave the data
+  // First the vector then the color
+  vertex_t points[] = {
+      {glm::vec3( 0.0f,  0.5f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f)},
+      {glm::vec3( 0.5f, -0.5f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
+      {glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec3(1.0f, 0.0f, 1.0f)},
+  };
+
+  MSGLError();
+
+  GLuint vbo = 0;
+  glGenBuffers(1, &vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  // If using just floats
+  // glBufferData(GL_ARRAY_BUFFER, 9 * sizeof(float), points, GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, 3 * sizeof(vertex_t), points, GL_STATIC_DRAW);
+
+  MSGLError();
+
+  // vao is global
+  glGenVertexArrays(1, &vao);
+  assert(vao >= 0);
+  glBindVertexArray(vao);
+  // Vanilla
+  // glEnableVertexAttribArray(0);
+  // Fancy
+  GLuint loc = glGetAttribLocation(shader_program, "in_vertex");
+  glEnableVertexAttribArray(loc);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  // If using just floats
+  // glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+  // assert(shader_program >= 0);
+  // printf("%u\n", loc);
+  // Vanilla
+  // glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t),
+  //                       (GLvoid*)offsetof(vertex_t, coord));
+  // Fancy
+  glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t),
+                        (GLvoid*)offsetof(vertex_t, coord));
+                        
+  MSGLError();
 }
 
 void DrawTriangle() {
-  glBegin(GL_TRIANGLES);
-  glColor3f(1.0F, 0.0F, 0.0F);
-  glVertex3f(-0.6F, -0.4F, 0.0F);
-  glColor3f(0.0F, 1.0F, 0.0F);
-  glVertex3f(0.6F, -0.4F, 0.0F);
-  glColor3f(0.0F, 0.0F, 1.0F);
-  glVertex3f(0.0F, 0.6F, 0.0F);
-  glEnd();
+  MSGLError();
+  glBindVertexArray(vao);
+  glDrawArrays(GL_TRIANGLES, 0, 3);
+  MSGLError();
 }
 
 void DrawTetrahedron() {
@@ -131,7 +234,7 @@ void DrawTetrahedron() {
   glEnd();
 }
 
-int main(int argc, char const *argv[]) {
+int main(int argc, char const* argv[]) {
   GLFWwindow* window{nullptr};
   glfwSetErrorCallback(ErrorCallback);
   if (glfwInit() == 0) {
@@ -141,10 +244,10 @@ int main(int argc, char const *argv[]) {
   glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
   // If you want an OpenGL 3.0+ context
   // see https://www.glfw.org/faq.html#41---how-do-i-create-an-opengl-30-context
-  // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-  // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-  // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-  // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
   window = glfwCreateWindow(500, 500, "Hello OpenGL and GLFW", 0, nullptr);
   if (window == nullptr) {
@@ -162,14 +265,35 @@ int main(int argc, char const *argv[]) {
 
   glfwSetKeyCallback(window, KeyCallback);
   glfwSetMouseButtonCallback(window, MouseButtonCallback);
-  glfwSetCursorPosCallback(window, MouseCursorPositionCallback);
-  glfwSetCursorEnterCallback(window, CursorEnteredCallback);
-  
+  // glfwSetCursorPosCallback(window, MouseCursorPositionCallback);
+  // glfwSetCursorEnterCallback(window, CursorEnteredCallback);
+
   glClearColor(0.0F, 0.0F, 0.0F, 1.0F);
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LESS);
 
+  MSGLError();
+
+  InitShader();
+
   MSGLVersion();
+
+  InitTriangle();
+
+
+  MSGLError();
+
+  GLuint u_model_view_matrix =
+      glGetUniformLocation(shader_program, "model_view_matrix");
+  assert(u_model_view_matrix >= 0);
+
+  MSGLError();
+
+  GLuint u_projection_matrix =
+      glGetUniformLocation(shader_program, "projection_matrix");
+  assert(u_projection_matrix >= 0);
+
+  MSGLError();
 
   while (glfwWindowShouldClose(window) == 0) {
     float ratio{NAN};
@@ -177,22 +301,56 @@ int main(int argc, char const *argv[]) {
     int height{0};
     glfwGetFramebufferSize(window, &width, &height);
     ratio = width / static_cast<float>(height);
+
+    MSGLError();
+
     glViewport(0, 0, width, height);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glm::mat4 projection_matrix =
+        glm::perspective<float>(90.0, ratio, 1.0, 25.0);
+    // lookAt(eye_position, center, up)
+    glm::mat4 look_at_matrix =
+        glm::lookAt(glm::vec3(0.0, 0.0, -2.5), glm::vec3(0.0, 0.0, 0.0),
+                    glm::vec3(0.0, 1.0, 0.0));
+    glm::mat4 model_view_matrix = look_at_matrix;
 
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glFrustum(-ratio, ratio, -ratio, ratio, 1.0F, 40.0F);
+    MSGLError();
 
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    gluLookAt(0.0F, 0.0F, -2.5F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F);
-    glRotatef(static_cast<float>(glfwGetTime()) * 50.0F, 0.0F, 0.0F, 1.0F);
-    glRotatef(static_cast<float>(glfwGetTime()) * 30.0F, 0.0F, 1.0F, 0.0F);
-    glRotatef(static_cast<float>(glfwGetTime()) * 15.0F, 1.0F, 0.0F, 0.0F);
+    // Activate our shading program
+    glUseProgram(shader_program);
 
-    DrawTetrahedron();
+    MSGLError();
+
+    // Update any uniform variables
+    glUniformMatrix4fv(u_model_view_matrix, 1, GL_FALSE,
+                       glm::value_ptr(model_view_matrix));
+
+    MSGLError();
+
+    glUniformMatrix4fv(u_projection_matrix, 1, GL_FALSE,
+                       glm::value_ptr(projection_matrix));
+
+    MSGLError();
+
+    // glMatrixMode(GL_PROJECTION);
+    // glLoadIdentity();
+    // glFrustum(-ratio, ratio, -ratio, ratio, 1.0F, 40.0F);
+    // MSGLError();
+    //
+    // glMatrixMode(GL_MODELVIEW);
+    // glLoadIdentity();
+    // MSGLError();
+    // gluLookAt(0.0F, 0.0F, -2.5F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F);
+    // glRotatef(static_cast<float>(glfwGetTime()) * 50.0F, 0.0F, 0.0F, 1.0F);
+    // glRotatef(static_cast<float>(glfwGetTime()) * 30.0F, 0.0F, 1.0F, 0.0F);
+    // glRotatef(static_cast<float>(glfwGetTime()) * 15.0F, 1.0F, 0.0F, 0.0F);
+    // MSGLError();
+
+    // Draw!
+    // DrawTetrahedron();
+    DrawTriangle();
+    MSGLError();
 
     glfwSwapBuffers(window);
     glfwPollEvents();
