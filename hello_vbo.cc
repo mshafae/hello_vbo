@@ -6,11 +6,14 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
+
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+
 #include <iostream>
+
 #define GLFW_INCLUDE_GLU
 #include <GLFW/glfw3.h>
 
@@ -24,19 +27,25 @@ const char* vertex_shader =
     "uniform mat4 model_view_matrix;"
     "uniform mat4 projection_matrix;"
     "in vec3 in_vertex;"
-    // "in vec3 in_color;"
-    // "out vec4 out_color;"
+    "in vec3 in_color;"
+    "out vec4 v_out_color;"
     "void main() {"
-    "  gl_Position = projection_matrix * model_view_matrix * vec4(in_vertex, 1.0);"
-    // "  out_color = vec4(0.5, 0.0, 0.5, 1.0);"
+    "  gl_Position = projection_matrix * model_view_matrix * vec4(in_vertex, "
+    "1.0);"
+    // Hard coding the color, and passing it.
+    // "  v_out_color = vec4(0.5, 0.0, 0.5, 1.0);"
+    "  v_out_color = vec4(in_color, 1.0);"
     "}";
 
 const char* fragment_shader =
     "#version 400\n"
-    // "in vec4 in_color;"
+    // Use the same name as what was used in the vertex shader
+    "in vec4 v_out_color;"
     "out vec4 frag_color;"
     "void main() {"
-    "  frag_color = vec4(0.5, 0.0, 0.5, 1.0);"
+    // Hard coding the color
+    // "  frag_color = vec4(0.5, 0.0, 0.5, 1.0);"
+    "  frag_color = v_out_color;"
     "}";
 
 #define MSGLError() _MSGLError(stderr, __FILE__, __LINE__)
@@ -133,7 +142,6 @@ void InitShader() {
 }
 
 void InitTriangle() {
-  
   // Just floats
   // float points[] = {
   //    0.0f,  0.5f,  0.0f,
@@ -144,9 +152,9 @@ void InitTriangle() {
   // Using a struct to interleave the data
   // First the vector then the color
   vertex_t points[] = {
-      {glm::vec3( 0.0f,  0.5f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f)},
-      {glm::vec3( 0.5f, -0.5f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
-      {glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec3(1.0f, 0.0f, 1.0f)},
+      {glm::vec3(0.0f, 0.5f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f)},
+      {glm::vec3(0.5f, -0.5f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)},
+      {glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)},
   };
 
   MSGLError();
@@ -167,7 +175,9 @@ void InitTriangle() {
   // Vanilla
   // glEnableVertexAttribArray(0);
   // Fancy
-  GLuint loc = glGetAttribLocation(shader_program, "in_vertex");
+  GLint loc = glGetAttribLocation(shader_program, "in_vertex");
+  MSGLError();
+  printf("in_vertex %d\n", loc);
   glEnableVertexAttribArray(loc);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   // If using just floats
@@ -180,8 +190,22 @@ void InitTriangle() {
   // Fancy
   glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t),
                         (GLvoid*)offsetof(vertex_t, coord));
-                        
   MSGLError();
+
+  loc = glGetAttribLocation(shader_program, "in_color");
+  MSGLError();
+  printf("in_color %d\n", loc);
+  glEnableVertexAttribArray(loc);
+  MSGLError();
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  MSGLError();
+  glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t),
+                        (GLvoid*)offsetof(vertex_t, color));
+  MSGLError();
+  // loc = glGetAttribLocation(shader_program, "junk");
+  // printf("junk %d\n", loc);
+  // You could assert(loc >= 0);
+  // MSGLError();
 }
 
 void DrawTriangle() {
@@ -280,7 +304,6 @@ int main(int argc, char const* argv[]) {
 
   InitTriangle();
 
-
   MSGLError();
 
   GLuint u_model_view_matrix =
@@ -308,12 +331,20 @@ int main(int argc, char const* argv[]) {
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glm::mat4 projection_matrix =
-        glm::perspective<float>(90.0, ratio, 1.0, 25.0);
+        glm::perspective<float>(90.0, ratio, 0.5, 5.0);
     // lookAt(eye_position, center, up)
+    // glm::mat4 look_at_matrix =
+    //     glm::lookAt(glm::vec3(0.0, 0.0, -2.5), glm::vec3(0.0, 0.0, 0.0),
+    //                 glm::vec3(0.0, 1.0, 0.0));
     glm::mat4 look_at_matrix =
-        glm::lookAt(glm::vec3(0.0, 0.0, -2.5), glm::vec3(0.0, 0.0, 0.0),
+        glm::lookAt(glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, 0.0, 0.0),
                     glm::vec3(0.0, 1.0, 0.0));
+    // glm::mat4 z_rotate = glm::rotate<float>(look_at_matrix, (glfwGetTime() * 50.0F), glm::vec3(0.0f, 0.0f, 1.0f));
+    // glm::mat4 y_rotate = glm::rotate<float>(z_rotate, (glfwGetTime() * 30.0F), glm::vec3(0.0f, 1.0f, 0.0f));
+    // glm::mat4 x_rotate = glm::rotate<float>(y_rotate, (glfwGetTime() * 15.0F), glm::vec3(1.0f, 0.0f, 0.0f));
+
     glm::mat4 model_view_matrix = look_at_matrix;
+    // glm::mat4 model_view_matrix = x_rotate;
 
     MSGLError();
 
