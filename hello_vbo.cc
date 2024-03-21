@@ -205,34 +205,35 @@ void InitTriangle() {
   // Vanilla
   // glEnableVertexAttribArray(0);
   // Fancy
-  GLint loc = glGetAttribLocation(shader_program_id, "in_vertex");
+  GLint location = glGetAttribLocation(shader_program_id, "in_vertex");
   msglError();
-  glEnableVertexAttribArray(loc);
+  glEnableVertexAttribArray(location);
   glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_object_id);
   // If using just floats
   // glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
   // assert(shader_program_id >= 0);
-  // printf("%u\n", loc);
+  // printf("%u\n", location);
   // Vanilla
   // glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t),
   //                       (GLvoid*)offsetof(vertex_t, coord));
   // Fancy
-  glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t),
+  glVertexAttribPointer(location, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t),
                         (GLvoid*)offsetof(vertex_t, coord));
   msglError();
 
-  loc = glGetAttribLocation(shader_program_id, "in_color");
+  location = glGetAttribLocation(shader_program_id, "in_color");
   msglError();
-  glEnableVertexAttribArray(loc);
+  glEnableVertexAttribArray(location);
   msglError();
   glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_object_id);
   msglError();
-  glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t),
+  glVertexAttribPointer(location, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t),
                         (GLvoid*)offsetof(vertex_t, color));
   msglError();
+  // Example of what happens when you ask for junk.
   // loc = glGetAttribLocation(shader_program_id, "junk");
-  // printf("junk %d\n", loc);
-  // You could assert(loc >= 0);
+  // printf("junk %d\n", location);
+  // You could assert(location >= 0);
   // msglError();
 }
 
