@@ -206,7 +206,6 @@ void InitTriangle() {
   // glEnableVertexAttribArray(0);
   // Fancy
   GLint location = glGetAttribLocation(shader_program_id, "in_vertex");
-  msglError();
   glEnableVertexAttribArray(location);
   glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_object_id);
   // If using just floats
@@ -222,11 +221,8 @@ void InitTriangle() {
   msglError();
 
   location = glGetAttribLocation(shader_program_id, "in_color");
-  msglError();
   glEnableVertexAttribArray(location);
-  msglError();
   glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_object_id);
-  msglError();
   glVertexAttribPointer(location, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t),
                         (GLvoid*)offsetof(vertex_t, color));
   msglError();
@@ -238,10 +234,8 @@ void InitTriangle() {
 }
 
 void DrawTriangle() {
-  msglError();
   glBindVertexArray(vertex_array_object_id);
   glDrawArrays(GL_TRIANGLES, 0, 3);
-  msglError();
 }
 
 int main(int argc, char const* argv[]) {
