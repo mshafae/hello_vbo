@@ -322,8 +322,9 @@ int main(int argc, char const* argv[]) {
       // rotate slowly around the z-axis once every 10 seconds
       // glm uses radians
       double previous_angle_degrees = z_rotate_angle * (180.0 / M_PI);
+      double seconds_per_rotation = 10.0;
       double z_rotate_angle_degrees =
-          previous_angle_degrees + (elapsed_time / 10.0) * 360.0;
+          previous_angle_degrees + (elapsed_time / seconds_per_rotation) * 360.0;
       if (z_rotate_angle_degrees > 360.0) {
         z_rotate_angle_degrees = z_rotate_angle_degrees - 360.0;
       }
